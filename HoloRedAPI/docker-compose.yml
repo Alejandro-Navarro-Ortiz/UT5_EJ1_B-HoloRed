@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  redis-radar:
+    image: redis:latest
+    container_name: holored-redis
+    command: redis-server --requirepass "ImperioCaido2026*"
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: always
+
+  cassandra-telemetria:
+    image: cassandra:latest
+    container_name: holored-cassandra
+    environment:
+      - CASSANDRA_USER=admin
+      - CASSANDRA_PASSWORD=TelemetriaSegura2026*
+    ports:
+      - "9042:9042"
+    volumes:
+      - cassandra_data:/var/lib/cassandra
+    restart: always
+
+  neo4j-inteligencia:
+    image: neo4j:latest
+    container_name: holored-neo4j
+    environment:
+      - NEO4J_AUTH=neo4j/InteligenciaGrafo2026*
+    ports:
+      - "7474:7474" # Interfaz HTTP
+      - "7687:7687" # Protocolo Bolt
+    volumes:
+      - neo4j_data:/data
+    restart: always
+
+volumes:
+  redis_data:
+  cassandra_data:
+  neo4j_data:
