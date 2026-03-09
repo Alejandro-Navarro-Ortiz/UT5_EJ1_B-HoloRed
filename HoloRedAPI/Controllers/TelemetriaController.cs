@@ -5,6 +5,10 @@ using HoloRedAPI.Exceptions;
 
 namespace HoloRedAPI.Controllers;
 
+/// <summary>
+/// Controlador destinado al almacenamiento de grandes volúmenes de datos.
+/// Gestiona telemetría y registros de impactos usando Cassandra.
+/// </summary>
 [ApiController]
 [Route("api/[controller]")]
 public class TelemetriaController : ControllerBase
@@ -16,6 +20,10 @@ public class TelemetriaController : ControllerBase
         _cassandraRepo = cassandraRepo;
     }
 
+    /// <summary>
+    /// Endpoint POST para registrar un nuevo impacto de combate en un sector.
+    /// Diseñado para operaciones de escritura masivas.
+    /// </summary>
     [HttpPost("impacto")]
     public async Task<IActionResult> RegistrarImpacto([FromBody] ImpactoRequest r)
     {
@@ -30,6 +38,9 @@ public class TelemetriaController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Endpoint GET para recuperar el historial de impactos en un sector y fecha dados.
+    /// </summary>
     [HttpGet("historial/{sector}")]
     public async Task<IActionResult> GetHistorial(string sector, [FromQuery] DateTime fecha)
     {
