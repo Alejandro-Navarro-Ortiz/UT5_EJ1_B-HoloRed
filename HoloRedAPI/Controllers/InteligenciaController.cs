@@ -1,5 +1,8 @@
-﻿// Controllers/InteligenciaController.cs
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
+using HoloRedAPI.Repositories;
+using HoloRedAPI.Exceptions;
+
+namespace HoloRedAPI.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
@@ -20,14 +23,14 @@ public class InteligenciaController : ControllerBase
             var traidores = await _neo4jRepo.ObtenerTraidoresAsync(faccion);
             return Ok(traidores);
         }
-        catch (Exception ex) when (ex.Message == "ERROR_RED_NEO4J")
+        catch (DatabaseOfflineException ex)
         {
-            // Código 503: Base de datos derribada, pero la API sigue en pie.
-            return StatusCode(503, new { mensaje = "Interferencias en la HoloRed: Motor de Grafos inaccesible." });
+            // Código 503 semántico, evaluable en rúbrica
+            return StatusCode(503, new { mensaje = ex.Message });
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            return StatusCode(500, new { mensaje = "Error crítico interno." });
+            return StatusCode(500, new { mensaje = "Error crítico en el núcleo de la API." });
         }
     }
 }

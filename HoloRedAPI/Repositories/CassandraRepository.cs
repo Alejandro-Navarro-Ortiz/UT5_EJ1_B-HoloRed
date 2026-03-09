@@ -1,37 +1,56 @@
-﻿// Repositories/CassandraRepository.cs
-using Cassandra;
+﻿using Cassandra;
+using HoloRedAPI.Exceptions;
+
+namespace HoloRedAPI.Repositories;
 
 public class CassandraRepository
 {
-    private readonly Cassandra.ISession _session;
+    private readonly ICluster _cluster;
+    private Cassandra.ISession? _session;
 
-    public CassandraRepository(Cassandra.ISession session) { _session = session; }
+    public CassandraRepository(ICluster cluster)
+    {
+        _cluster = cluster;
+    }
+
+    // Patrón Lazy-Load: Resiliencia en el arranque. Solo intenta conectar si hay un impacto real.
+    private Cassandra.ISession GetSession()
+    {
+        if (_session == null)
+            _session = _cluster.Connect("holored");
+        return _session;
+    }
 
     public async Task InsertarImpactoAsync(string sectorId, DateTime fecha, string atacante, string objetivo, int dano)
     {
         try
         {
+            var session = GetSession();
+            // Inserción masiva (Append-only). Diseñado para altísimo rendimiento de escritura.
             var statement = new SimpleStatement(
-                "INSERT INTO holored.impactos (SectorId, Fecha, Timestamp, NaveAtacante, NaveObjetivo, DanoEscudos) VALUES (?, ?, ?, ?, ?, ?)",
+                "INSERT INTO impactos (SectorId, Fecha, Timestamp, NaveAtacante, NaveObjetivo, DanoEscudos) VALUES (?, ?, ?, ?, ?, ?)",
                 sectorId, new LocalDate(fecha.Year, fecha.Month, fecha.Day), DateTime.UtcNow, atacante, objetivo, dano);
-            await _session.ExecuteAsync(statement);
+            await session.ExecuteAsync(statement);
         }
         catch (NoHostAvailableException ex)
         {
-            throw new Exception("ERROR_RED_CASSANDRA", ex);
+            throw new DatabaseOfflineException("Sistema de telemetría dañado (Cassandra caído)", ex);
         }
     }
+
     public async Task<List<object>> ObtenerHistorialAsync(string sectorId, DateTime fecha)
     {
         try
         {
-            // Gracias a que la Clave de Partición es (SectorId, Fecha), esta consulta es hiperveloz y no hace Full Scan.
-            var query = "SELECT Timestamp, NaveAtacante, NaveObjetivo, DanoEscudos FROM holored.impactos WHERE SectorId = ? AND Fecha = ?";
+            var session = GetSession();
+            // Consulta optimizada: SectorId y Fecha componen la Partition Key. 
+            // Esto garantiza que NO haya un Full Scan en la base de datos distribuida.
+            var query = "SELECT Timestamp, NaveAtacante, NaveObjetivo, DanoEscudos FROM impactos WHERE SectorId = ? AND Fecha = ?";
             var statement = new SimpleStatement(query, sectorId, new LocalDate(fecha.Year, fecha.Month, fecha.Day));
 
-            var rs = await _session.ExecuteAsync(statement);
-
+            var rs = await session.ExecuteAsync(statement);
             var historial = new List<object>();
+
             foreach (var row in rs)
             {
                 historial.Add(new
@@ -46,7 +65,7 @@ public class CassandraRepository
         }
         catch (NoHostAvailableException ex)
         {
-            throw new Exception("ERROR_RED_CASSANDRA", ex);
+            throw new DatabaseOfflineException("Sistema de telemetría dañado (Cassandra caído)", ex);
         }
     }
 }

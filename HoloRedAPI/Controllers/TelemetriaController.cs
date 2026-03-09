@@ -1,4 +1,9 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using HoloRedAPI.Repositories;
+using HoloRedAPI.Models;
+using HoloRedAPI.Exceptions;
+
+namespace HoloRedAPI.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
@@ -17,11 +22,11 @@ public class TelemetriaController : ControllerBase
         try
         {
             await _cassandraRepo.InsertarImpactoAsync(r.SectorId, r.Fecha, r.Atacante, r.Objetivo, r.Dano);
-            return Ok(new { mensaje = "Impacto registrado en la matriz columnar." });
+            return Ok(new { mensaje = "Impacto registrado masivamente en la matriz columnar." });
         }
-        catch (Exception ex) when (ex.Message == "ERROR_RED_CASSANDRA")
+        catch (DatabaseOfflineException ex)
         {
-            return StatusCode(503, new { mensaje = "Sistema de logs dañado (Cassandra offline)." });
+            return StatusCode(503, new { mensaje = ex.Message });
         }
     }
 
@@ -33,18 +38,9 @@ public class TelemetriaController : ControllerBase
             var historial = await _cassandraRepo.ObtenerHistorialAsync(sector, fecha);
             return Ok(historial);
         }
-        catch (Exception ex) when (ex.Message == "ERROR_RED_CASSANDRA")
+        catch (DatabaseOfflineException ex)
         {
-            return StatusCode(503, new { mensaje = "Sistema de logs dañado (Cassandra offline)." });
+            return StatusCode(503, new { mensaje = ex.Message });
         }
     }
-}
-
-public class ImpactoRequest
-{
-    public string SectorId { get; set; }
-    public DateTime Fecha { get; set; }
-    public string Atacante { get; set; }
-    public string Objetivo { get; set; }
-    public int Dano { get; set; }
 }
