@@ -1,0 +1,6 @@
+@HoloRedAPI_HostAddress = http://localhost:5240
+
+GET {{HoloRedAPI_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
